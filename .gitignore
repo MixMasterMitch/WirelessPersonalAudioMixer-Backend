@@ -1,0 +1,10 @@
+# Build
+build/
+
+# nodejs
+node_modules/
+npm-debug.log
+
+# IntelliJ
+.idea/
+*.iml

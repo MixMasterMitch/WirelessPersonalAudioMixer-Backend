@@ -26,11 +26,13 @@ class AudioInputAndTransmitterThread {
 		static void Start(void* arg);
 		void Stop();
 		void RegisterReceiver(char* ip);
+		vector<float> GetAudioInputLevels();
 
 	private:
 		int framesPerBuffer;
 		int port;
 		vector<char*> receivers;
+		vector<float> levels;
 		PaStreamParameters inputParameters;
 		PaStream* stream;
 		UdpSender* udpSender;

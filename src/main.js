@@ -5,10 +5,12 @@ module.exports = {
     Transmitter : {
         start : WirelessPersonalAudioMixerBackend.startTransmittingAudio,
         registerReceiver : WirelessPersonalAudioMixerBackend.registerReceiver,
+        getAudioInputLevels : WirelessPersonalAudioMixerBackend.getAudioInputLevels,
         stop : WirelessPersonalAudioMixerBackend.stopTransmittingAudio
     },
     Receiver : {
         start : WirelessPersonalAudioMixerBackend.startReceivingAudio,
+        getAudioOutputLevel : WirelessPersonalAudioMixerBackend.getAudioOutputLevel,
         stop : WirelessPersonalAudioMixerBackend.stopReceivingAudio
     },
     Hardware : {
@@ -17,14 +19,16 @@ module.exports = {
             var inputInfo = _.values(WirelessPersonalAudioMixerBackend.getAudioInputInfo());
             var inputs = [];
             _.each(inputInfo, function(input) {
-                for (var i = 0; i < input.numInputChannels; i++) {
+                if (input.numInputChannels <= 0) { return; }
+                // for (var i = 0; i < input.numInputChannels; i++) {
                     inputs.push({
                         name : input.name,
                         deviceNumber : input.deviceNumber,
-                        channelNumber : i,
-                        latency : input.latency
-                    })
-                }
+                        numChannels : input.numInputChannels,
+                        latency : input.latency,
+                        isDefault : input.isDefault
+                    });
+                // }
             });
             return inputs;
         }

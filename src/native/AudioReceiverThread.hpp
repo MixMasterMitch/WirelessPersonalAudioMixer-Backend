@@ -22,11 +22,13 @@ class AudioReceiverThread {
 		uv_thread_t thread;
 		static void Start(void* arg);
 		void Stop();
+		float GetAudioOutputLevel();
 
 	private:
 	    void Run();
 		int framesPerBuffer;
 		bool shutdown;
+		float level;
 		AudioOutputThread* audioOutputThread;
 		UdpReceiver* udpReceiver;
 		OpusAudioDecoder* audioDecoder;

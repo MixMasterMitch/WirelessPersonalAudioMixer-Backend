@@ -3,6 +3,7 @@
 #include <nan.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <vector>
 #include "portaudio.h"
 #include "AudioInputAndTransmitterThread.hpp"
 #include "AudioOutputThread.hpp"
@@ -93,6 +94,7 @@ NAN_METHOD(GetAudioInputInfo) {
         info->Set(NanNew<String>("deviceNumber"), NanNew<Number>(i));
         info->Set(NanNew<String>("numInputChannels"), NanNew<Number>(deviceInfo->maxInputChannels));
         info->Set(NanNew<String>("latency"), NanNew<Number>(deviceInfo->defaultLowInputLatency * 1000));
+        info->Set(NanNew<String>("isDefault"), NanNew<Boolean>(i == Pa_GetDefaultInputDevice()));
 
         obj->Set(NanNew<Number>(i), info);
     }
@@ -107,8 +109,12 @@ NAN_METHOD(StartTransmittingAudio) {
     if (!startedTransmittingAudio) {
         startedTransmittingAudio = true;
 
-        // input parameters for the default input device
         int device = Pa_GetDefaultInputDevice();
+        if (args.Length() > 0) {
+            device = args[0]->Uint32Value();
+        }
+
+        // input parameters for the input device
         const PaDeviceInfo* deviceInfo = Pa_GetDeviceInfo(device);
         PaStreamParameters inputParameters;
         inputParameters.device = device;
@@ -136,6 +142,23 @@ NAN_METHOD(StopTransmittingAudio) {
     }
 
     NanReturnUndefined();
+}
+
+// Gets the current audio level of each channel of the audio input device.
+NAN_METHOD(GetAudioInputLevels) {
+    NanScope();
+
+    Local<Array> array = NanNew<Array>();
+
+    if (startedTransmittingAudio) {
+
+        vector<float> levels = audioInputAndTransmitterThread->GetAudioInputLevels();
+        for(vector<float>::size_type i = 0; i < levels.size(); i++) {
+            array->Set(i, NanNew<Number>(levels[i]));
+        }
+    }
+
+    NanReturnValue(array);
 }
 
 NAN_METHOD(RunAsyncTask) {
@@ -196,6 +219,19 @@ NAN_METHOD(RegisterReceiver) {
     NanReturnUndefined();
 }
 
+// Gets the current audio level of the audio being sent to the audio output device.
+NAN_METHOD(GetAudioOutputLevel) {
+    NanScope();
+
+    float level = 0.0f;
+
+    if (startedReceivingAudio) {
+        level = audioReceiverThread->GetAudioOutputLevel();
+    }
+
+    NanReturnValue(NanNew<Number>(level));
+}
+
 
 void Initialize(Handle<Object> exports) {
     exports->Set(NanNew<String>("initializePA"), NanNew<FunctionTemplate>(InitializePA)->GetFunction());
@@ -203,8 +239,10 @@ void Initialize(Handle<Object> exports) {
     exports->Set(NanNew<String>("printAudioIO"), NanNew<FunctionTemplate>(PrintAudioIO)->GetFunction());
     exports->Set(NanNew<String>("startTransmittingAudio"), NanNew<FunctionTemplate>(StartTransmittingAudio)->GetFunction());
     exports->Set(NanNew<String>("stopTransmittingAudio"), NanNew<FunctionTemplate>(StopTransmittingAudio)->GetFunction());
+    exports->Set(NanNew<String>("getAudioInputLevels"), NanNew<FunctionTemplate>(GetAudioInputLevels)->GetFunction());
     exports->Set(NanNew<String>("startReceivingAudio"), NanNew<FunctionTemplate>(StartReceivingAudio)->GetFunction());
     exports->Set(NanNew<String>("stopReceivingAudio"), NanNew<FunctionTemplate>(StopReceivingAudio)->GetFunction());
+    exports->Set(NanNew<String>("getAudioOutputLevel"), NanNew<FunctionTemplate>(GetAudioOutputLevel)->GetFunction());
     exports->Set(NanNew<String>("runAsyncTask"), NanNew<FunctionTemplate>(RunAsyncTask)->GetFunction());
     exports->Set(NanNew<String>("getAudioInputInfo"), NanNew<FunctionTemplate>(GetAudioInputInfo)->GetFunction());
     exports->Set(NanNew<String>("registerReceiver"), NanNew<FunctionTemplate>(RegisterReceiver)->GetFunction());

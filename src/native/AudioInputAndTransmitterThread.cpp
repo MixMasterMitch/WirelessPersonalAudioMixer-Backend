@@ -4,10 +4,14 @@ using namespace v8;
 
 AudioInputAndTransmitterThread::AudioInputAndTransmitterThread(int sampleRate, int framesPerBuffer, int port, PaStreamParameters inputParameters)
     : framesPerBuffer(framesPerBuffer), port(port), inputParameters(inputParameters) {
-    int error;
+    int error, i;
 
     audioEncoder = new OpusAudioEncoder(sampleRate, framesPerBuffer);
     udpSender = new UdpSender();
+
+    for (i = 0; i < inputParameters.channelCount; i++) {
+        levels.push_back(0.0f);
+    }
 
     error = Pa_OpenStream(
         &stream,
@@ -67,6 +71,17 @@ void AudioInputAndTransmitterThread::OnSamples(const float* samples) {
     for (vector<char*>::iterator it = receivers.begin() ; it != receivers.end(); ++it) {
         udpSender->Send(*it, port, encodedSamples, encodedSamplesLength);
     }
+
+
+    for (i = 0; i < inputParameters.channelCount; i++) {
+        float sum = 0.0f;
+        for (j = 0; j < framesPerBuffer; j++) {
+            sum += samples[j * inputParameters.channelCount + i] * samples[j * inputParameters.channelCount + i];
+        }
+        float rms = sqrt(sum / framesPerBuffer);
+        float db = 20.0f * log10(rms/0.1f) + 80.0f;
+        levels[i] = db * 0.2f + levels[i] * 0.8f;
+    }
 }
 
 void AudioInputAndTransmitterThread::RegisterReceiver(char* ip) {
@@ -76,5 +91,9 @@ void AudioInputAndTransmitterThread::RegisterReceiver(char* ip) {
     for (vector<char*>::iterator it = receivers.begin() ; it != receivers.end(); ++it) {
         cout << ' ' << *it << endl;
     }
+}
+
+vector<float> AudioInputAndTransmitterThread::GetAudioInputLevels() {
+    return levels;
 }
 
